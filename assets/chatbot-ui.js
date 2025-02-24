@@ -99,7 +99,9 @@ window.displayMessage = function(text, sender, isSelection = false) {
 
     const messageElement = document.createElement("div");
     messageElement.className = sender;
-    messageElement.innerHTML = text;
+
+    // Convert line breaks from GPT (\n) into HTML <br> tags
+    messageElement.innerHTML = text.replace(/\n/g, "<br>");
 
     if (isSelection) {
         const selectionContainer = document.createElement("div");
@@ -189,13 +191,17 @@ function fetchGPTResponse(userMessage) {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success && data.response) {
-            displayMessage("GPT: " + data.response, "gpt");
+        console.log("GPT Response Data:", data);
+
+        // Fix error message condition
+        if (data.success && data.data && data.data.response) {
+            displayMessage("GPT: " + data.data.response, "gpt");
         } else {
             displayMessage("GPT: Error retrieving response.", "error");
+            console.error("GPT Error:", data);
         }
     })
-    .catch(function(error) {
+    .catch(error => {
         console.error("Error:", error);
         displayMessage("GPT: Unable to connect.", "error");
     });
