@@ -83,9 +83,9 @@ document.addEventListener("DOMContentLoaded", function() {
     initializeChatUI();
 
     if (!sessionStorage.getItem("orderType")) {
-        displayMessage("GPT: Are you ordering for an Agent or a Property?", "gpt", true);
+        displayMessage("CR8: Are you ordering for an Agent or a Property?", "gpt", true);
     } else {
-        displayMessage(`GPT: (Order Type: ${sessionStorage.getItem("orderType")})`, "gpt");
+        displayMessage(`CR8: (Order Type: ${sessionStorage.getItem("orderType")})`, "gpt");
     }
 });
 
@@ -140,13 +140,13 @@ window.selectUserType = function(selection) {
     }
 
     displayMessage(`GPT: (Order Type: ${selection})`, "gpt");
-
     fetchWooCommerceProducts(selection);
 };
 
-// Function to fetch WooCommerce products only when the user selects Agent or Property
+// Single source of truth for fetching WooCommerce products
 function fetchWooCommerceProducts(selection) {
-    displayMessage(`GPT: Fetching available ${selection} products...`, "gpt");
+    // Show immediate feedback to user
+    displayMessage("CR8: Initializing product catalog...", "gpt");
 
     fetch(chatbot_ajax.ajax_url, {
         method: "POST",
@@ -160,14 +160,34 @@ function fetchWooCommerceProducts(selection) {
     .then(data => {
         console.log("WooCommerce Products Received:", data);
 
-        if (data.success && data.products) {
-            let formattedProducts = JSON.stringify(data.products, null, 2);
-            displayMessage("GPT: Here is the structured data:\n" + formattedProducts, "gpt");
+        if (data.success && data.data.products) {
+            let formattedProducts = JSON.stringify(data.data.products, null, 2);
+            
+            // Phase 2: Initialize GPT context
+            fetch(chatbot_ajax.ajax_url, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({
+                    action: "initialize_gpt_context",
+                    products: formattedProducts,
+                    order_type: selection
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log("GPT Context Initialization:", result);
+                if (result.success) {
+                    displayMessage("CR8: Great! Let's put together an order for " + selection + " marketing.", "gpt");
+                }
+            })
+            .catch(error => {
+                console.error("Error initializing GPT context:", error);
+            });
         } else {
             displayMessage("GPT: Error retrieving product data.", "error");
         }
     })
-    .catch(function(error) {
+    .catch(error => {
         console.error("Error:", error);
         displayMessage("GPT: Unable to fetch product data.", "error");
     });
