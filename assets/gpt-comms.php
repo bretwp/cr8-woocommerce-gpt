@@ -267,3 +267,95 @@ function get_current_order_summary() {
     }
     return $summary;
 }
+
+function create_woocommerce_cart_from_gpt_order() {
+    // Get current order items
+    $current_order = get_transient('current_order_items');
+    if (empty($current_order)) {
+        return [
+            'success' => false,
+            'message' => 'No items in order'
+        ];
+    }
+
+    try {
+        // Ensure WooCommerce is active and cart is available
+        if (!function_exists('WC') || !isset(WC()->cart)) {
+            throw new Exception('WooCommerce cart is not available');
+        }
+
+        // Clear existing cart
+        WC()->cart->empty_cart();
+
+        $added_items = [];
+        $failed_items = [];
+
+        // Add each item to cart
+        foreach ($current_order as $product_name => $details) {
+            // Find product by name
+            $products = wc_get_products([
+                'name' => $product_name,
+                'limit' => 1
+            ]);
+
+            if (!empty($products)) {
+                $product = reset($products);
+                $product_id = $product->get_id();
+                
+                // Add to cart
+                $added = WC()->cart->add_to_cart(
+                    $product_id, 
+                    $details['quantity']
+                );
+
+                if ($added) {
+                    $added_items[] = $product_name;
+                } else {
+                    $failed_items[] = $product_name;
+                }
+            } else {
+                $failed_items[] = $product_name;
+            }
+        }
+
+        // Clear the GPT order after successful cart creation
+        if (!empty($added_items)) {
+            set_transient('current_order_items', [], 3600);
+        }
+
+        // Prepare response message
+        $message = '';
+        if (!empty($added_items)) {
+            $message .= 'Added to cart: ' . implode(', ', $added_items) . '. ';
+        }
+        if (!empty($failed_items)) {
+            $message .= 'Failed to add: ' . implode(', ', $failed_items) . '. ';
+        }
+
+        return [
+            'success' => !empty($added_items),
+            'message' => $message,
+            'redirect_url' => wc_get_cart_url()
+        ];
+
+    } catch (Exception $e) {
+        return [
+            'success' => false,
+            'message' => 'Error creating cart: ' . $e->getMessage()
+        ];
+    }
+}
+
+// Add AJAX handler for cart creation
+add_action('wp_ajax_create_gpt_cart', 'handle_create_gpt_cart');
+add_action('wp_ajax_nopriv_create_gpt_cart', 'handle_create_gpt_cart');
+
+function handle_create_gpt_cart() {
+    $result = create_woocommerce_cart_from_gpt_order();
+    
+    if ($result['success']) {
+        wp_send_json_success($result);
+    } else {
+        wp_send_json_error($result);
+    }
+}
