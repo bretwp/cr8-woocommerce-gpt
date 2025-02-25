@@ -22,6 +22,7 @@ window.initializeChatUI = function() {
                     <textarea id="chatbot-input" placeholder="Type your message..." rows="3" style="width: 100%;"></textarea>
                     <button id="chatbot-send">Send</button>
                     <button id="reset-order" class="chatbot-reset-button">Reset Order</button>
+                    <button onclick="createWooCommerceCart()" class="create-cart-button">Create Order</button>
                 </div>
             </div>
         `;
@@ -224,5 +225,33 @@ function fetchGPTResponse(userMessage) {
     .catch(error => {
         console.error("Error:", error);
         displayMessage("GPT: Unable to connect.", "error");
+    });
+}
+
+function createWooCommerceCart() {
+    fetch(chatbot_ajax.ajax_url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            action: 'create_gpt_cart',
+            nonce: chatbot_ajax.nonce
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.data.redirect_url) {
+            // Show success message and redirect
+            alert(data.data.message);
+            window.location.href = data.data.redirect_url;
+        } else {
+            // Show error message
+            alert(data.data.message || 'Failed to create cart');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to create cart');
     });
 }
