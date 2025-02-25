@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Include GPT Request File
-require_once plugin_dir_path(__FILE__) . 'assets/gpt-woocommerce-request.php';
+require_once plugin_dir_path(__FILE__) . 'assets/gpt-comms.php';
 
 // Enqueue external CSS and JS files
 function enqueue_chatbot_assets() {
@@ -20,8 +20,6 @@ function enqueue_chatbot_assets() {
     // Load chatbot UI first
     wp_enqueue_script('chatbot-ui', plugin_dir_url(__FILE__) . 'assets/chatbot-ui.js', array('jquery'), null, true);
     
-    // Load chatbot data after UI
-    wp_enqueue_script('chatbot-data', plugin_dir_url(__FILE__) . 'assets/chatbot-data.js', array('jquery', 'chatbot-ui'), null, true);
 }
 add_action('wp_enqueue_scripts', 'enqueue_chatbot_assets');
 ?>
